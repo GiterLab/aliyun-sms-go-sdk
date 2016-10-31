@@ -15,6 +15,8 @@ Aliyun SMS SDK for golang
 
 ## Usage
 
+[使用帮助](https://github.com/GiterLab/aliyun-sms-go-sdk/blob/master/doc/tips.md)
+
 	package main
 	
 	import (
