@@ -17,7 +17,14 @@ const (
 func main() {
 	sms.HttpDebugEnable = true
 	c := sms.New(ACCESSID, ACCESSKEY)
+	// send to one person
 	e, err := c.SendOne("1375821****", "多协云", "SMS_22175101", `{"company":"duoxieyun"}`)
+	if err != nil {
+		fmt.Println("send sms failed", err, e.Error())
+		os.Exit(0)
+	}
+	// send to more than one person
+	e, err = c.SendMulti([]string{"1375821****", "1835718****"}, "多协云", "SMS_22175101", `{"company":"duoxieyun"}`)
 	if err != nil {
 		fmt.Println("send sms failed", err, e.Error())
 		os.Exit(0)
