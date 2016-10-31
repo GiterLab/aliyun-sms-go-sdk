@@ -353,8 +353,12 @@ func (c *SMSClient) calc_string_to_sign() string {
 	c.param["AccessKeyId"] = c.Param.GetAccessKeyId()
 	c.param["SignatureMethod"] = c.Param.GetSignatureMethod()
 	c.param["Timestamp"] = time.Now().UTC().Format(time.RFC3339)
+	// sync c.Param.Timestamp
+	c.Param.SetTimestamp(c.param["Timestamp"])
 	c.param["SignatureVersion"] = c.Param.GetSignatureVersion()
 	c.param["SignatureNonce"] = uuid.New()
+	// sync c.Param.SignatureNonce
+	c.Param.SetSignatureNonce(c.param["SignatureNonce"])
 	c.param["RegionId"] = c.Param.GetRegionId()
 
 	strslice := make([]string, len(c.param))
