@@ -1,6 +1,8 @@
 # aliyun-sms-go-sdk
 Aliyun SMS SDK for golang
 
+[![wercker status](https://app.wercker.com/status/5ef19ea6b2a854db200521592d0d7b2e/m/master "wercker status")](https://app.wercker.com/project/byKey/5ef19ea6b2a854db200521592d0d7b2e)
+
 [![Build Status](https://travis-ci.org/GiterLab/aliyun-sms-go-sdk.svg?branch=master)](https://travis-ci.org/GiterLab/aliyun-sms-go-sdk)
 [![GoDoc](https://godoc.org/github.com/GiterLab/aliyun-sms-go-sdk/sms?status.svg)](https://godoc.org/github.com/GiterLab/aliyun-sms-go-sdk/sms)
 
@@ -44,7 +46,6 @@ Aliyun SMS SDK for golang
 ## Links 
 - [Short Message Service，SMS(短信服务)](https://www.aliyun.com/product/sms)
 - [API使用手册](https://help.aliyun.com/document_detail/44364.html?spm=5176.8195934.507901.9.5XOJqQ)
-
 
 ## License
 
