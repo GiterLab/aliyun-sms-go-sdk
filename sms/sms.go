@@ -367,10 +367,11 @@ func (c *SMSClient) calc_string_to_sign() string {
 		data := url.Values{}
 		data.Add(k, v)
 		strslice[i] = data.Encode()
+		strslice[i] = aliyun_sms_encode_over(strslice[i])
 		i++
 	}
 	sort.Strings(strslice)
-	return "POST&" + url.QueryEscape("/") + "&" + url.QueryEscape(strings.Join(strslice, "&"))
+	return "POST&" + percent_encode("/") + "&" + percent_encode(strings.Join(strslice, "&"))
 }
 
 func signature_method(key, string_to_sign string) string {
@@ -381,8 +382,25 @@ func signature_method(key, string_to_sign string) string {
 	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
 }
 
-func new_string(v string) *string {
-	return &v
+// 一般支持 URL 编码的库（比如 Java 中的 java.net.URLEncoder）都是按照“application/x-www-form-urlencoded”的MIME类型的规则进行编码的。
+// 实现时可以直接使用这类方式进行编码，
+// 把编码后的字符串中加号（+）替换成%20、星号（*）替换成%2A、%7E 替换回波浪号（~）, 即可得到所需要的编码字符串
+func percent_encode(s string) string {
+	s = url.QueryEscape(s)
+	s = strings.Replace(s, "+", "%20", -1)
+	s = strings.Replace(s, "*", "%2A", -1)
+	s = strings.Replace(s, "%7E", "~", -1)
+
+	return s
+}
+
+// 把编码后的字符串中加号（+）替换成%20、星号（*）替换成%2A、%7E 替换回波浪号（~）, 即可得到所需要的编码字符串
+func aliyun_sms_encode_over(s string) string {
+	s = strings.Replace(s, "+", "%20", -1)
+	s = strings.Replace(s, "*", "%2A", -1)
+	s = strings.Replace(s, "%7E", "~", -1)
+
+	return s
 }
 
 // 创建一个短信发送客户端
