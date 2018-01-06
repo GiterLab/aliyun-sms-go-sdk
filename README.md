@@ -9,9 +9,16 @@ Aliyun SMS SDK for golang
 ## About
 短信服务（Short Message Service）是阿里云为用户提供的一种通信服务的能力，支持快速发送短信验证码、短信通知等。 完美支撑双11期间2亿用户，发送6亿短信，8万并发量。三网合一专属通道，与工信部携号转网平台实时互联。电信级运维保障，实时监控自动切换，到达率高达99%。
 
+<font color=#FF0000 size=4>
+注意: 
+2017年12月20日至2018年1月21日 消息服务中的短信功能和云市场（阿里短信服务）将迁移至云通信短信服务
+为了尽快使用更专业的服务，还请您确认迁移后尽快下载正确的SKD和API代码</font>
 ## Install
 
 	$ go get -u -v github.com/GiterLab/aliyun-sms-go-sdk
+
+	`github.com/GiterLab/aliyun-sms-go-sdk/sms` 将停止维护
+	`github.com/GiterLab/aliyun-sms-go-sdk/dysms` 为迁移至云通信后的新SDK
 
 ## Usage
 
@@ -28,12 +35,14 @@ Aliyun SMS SDK for golang
 	
 	// modify it to yours
 	const (
-		ENDPOINT  = "https://sms.aliyuncs.com/"
 		ACCESSID  = "your_accessid"
 		ACCESSKEY = "your_accesskey"
 	)
 	
 	func main() {
+		// 2017年12月20日至2018年1月21日 消息服务中的短信功能和云市场（阿里短信服务）将迁移至云通信短信服务
+		// 为了尽快使用更专业的服务，还请您确认迁移后尽快下载正确的SKD和API代码
+		// 此测试接口过时，请勿再使用
 		sms.HttpDebugEnable = true
 		c := sms.New(ACCESSID, ACCESSKEY)
 		// send to one person
@@ -51,9 +60,12 @@ Aliyun SMS SDK for golang
 		fmt.Println("send sms succeed", e.GetRequestId())
 	}
 
+
+
 ## Links 
 - [Short Message Service，SMS(短信服务)](https://www.aliyun.com/product/sms)
-- [API使用手册](https://help.aliyun.com/document_detail/44364.html?spm=5176.8195934.507901.9.5XOJqQ)
+- [HTTP协议及签名](https://help.aliyun.com/document_detail/56189.html?spm=5176.doc56189.6.576.JIUq2i)
+- [API签名机制](https://help.aliyun.com/document_detail/56189.html?spm=5176.product44282.6.576.VQczaW)
 
 ## License
 

@@ -4,13 +4,12 @@ package sms
 
 import (
 	"compress/gzip"
-	"crypto/hmac"
-	"crypto/sha1"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"net/url"
 	"sort"
 	"strings"
@@ -20,145 +19,201 @@ import (
 	"github.com/tobyzxj/uuid"
 )
 
-var HttpDebugEnable bool = false
+// HTTPDebugEnable http调试开关
+var HTTPDebugEnable = false
 
-type SmsParam struct {
-	Action           string
-	SignName         string
-	TemplateCode     string
-	RecNum           string
-	ParamString      string
-	Format           string
-	Version          string
-	AccessKeyId      string
-	SignatureMethod  string
-	Timestamp        string
-	SignatureVersion string
-	SignatureNonce   string
-	RegionId         string
+// Param 短信发送所需要的参数
+type Param struct {
+	// 系统参数
+	AccessKeyID      string // 阿里云颁发给用户的访问服务所用的密钥ID
+	Timestamp        string // 格式为：yyyy-MM-dd’T’HH:mm:ss’Z’；时区为：GMT
+	Format           string // 没传默认为JSON，可选填值：XML
+	SignatureMethod  string // 建议固定值：HMAC-SHA1
+	SignatureVersion string // 建议固定值：1.0
+	SignatureNonce   string // 用于请求的防重放攻击，每次请求唯一
+	Signature        string // 最终生成的签名结果值
+
+	// 业务参数
+	Action       string // API的命名，固定值，如发送短信API的值为：SendSms
+	Version      string // API的版本，固定值，如短信API的值为：2017-05-25
+	RegionID     string // API支持的RegionID，如短信API的值为：cn-hangzhou
+	RecNum       string // 手机号
+	SignName     string // 短信签名
+	TemplateCode string // 短信模板
+	ParamString  string // 短信版本中的参数
+	OutID        string // 外部流水扩展字段
 }
 
-func (this *SmsParam) SetAction(action string) {
-	this.Action = action
+// SetAccessKeyID 设置密钥ID
+func (p *Param) SetAccessKeyID(accesskeyid string) {
+	p.AccessKeyID = accesskeyid
 }
 
-func (this *SmsParam) GetAction() string {
-	return this.Action
+// GetAccessKeyID 获取密钥ID
+func (p *Param) GetAccessKeyID() string {
+	return p.AccessKeyID
 }
 
-func (this *SmsParam) SetSignName(signname string) {
-	this.SignName = signname
+// SetTimestamp 设置时间戳
+func (p *Param) SetTimestamp(timestamp string) {
+	p.Timestamp = timestamp
 }
 
-func (this *SmsParam) GetSignName() string {
-	return this.SignName
+// GetTimestamp 获取时间戳
+func (p *Param) GetTimestamp() string {
+	return p.Timestamp
 }
 
-func (this *SmsParam) SetTemplateCode(templatecode string) {
-	this.TemplateCode = templatecode
+// SetFormat 设置返回格式，JSON/XML
+func (p *Param) SetFormat(format string) {
+	p.Format = format
 }
 
-func (this *SmsParam) GetTemplateCode() string {
-	return this.TemplateCode
+// GetFormat 获取返回格式
+func (p *Param) GetFormat() string {
+	return p.Format
 }
 
-func (this *SmsParam) SetRecNum(recnum string) {
-	this.RecNum = recnum
+// SetSignatureMethod 设置签名方法
+func (p *Param) SetSignatureMethod(signaturemethod string) {
+	p.SignatureMethod = signaturemethod
 }
 
-func (this *SmsParam) GetRecNum() string {
-	return this.RecNum
+// GetSignatureMethod 获取签名方法
+func (p *Param) GetSignatureMethod() string {
+	return p.SignatureMethod
 }
 
-func (this *SmsParam) SetParamString(paramstring string) {
-	this.ParamString = paramstring
+// SetSignatureVersion 设置签名版本
+func (p *Param) SetSignatureVersion(signatureversion string) {
+	p.SignatureVersion = signatureversion
 }
 
-func (this *SmsParam) GetParamString() string {
-	return this.ParamString
+// GetSignatureVersion 获取签名版本
+func (p *Param) GetSignatureVersion() string {
+	return p.SignatureVersion
 }
 
-func (this *SmsParam) SetFormat(format string) {
-	this.Format = format
+// SetSignatureNonce 设置每一次请求的唯一序列
+func (p *Param) SetSignatureNonce(signaturenonce string) {
+	p.SignatureNonce = signaturenonce
 }
 
-func (this *SmsParam) GetFormat() string {
-	return this.Format
+// GetSignatureNonce 获取当前请求的序列
+func (p *Param) GetSignatureNonce() string {
+	return p.SignatureNonce
 }
 
-func (this *SmsParam) SetVersion(version string) {
-	this.Version = version
+// SetSignature 设置最终的签名结果
+func (p *Param) SetSignature(signature string) {
+	p.Signature = signature
 }
 
-func (this *SmsParam) GetVersion() string {
-	return this.Version
+// GetSignature 获取签名结果
+func (p *Param) GetSignature() string {
+	return p.Signature
 }
 
-func (this *SmsParam) SetAccessKeyId(accesskeyid string) {
-	this.AccessKeyId = accesskeyid
+// SetAction 设置API请求方法参数
+func (p *Param) SetAction(action string) {
+	p.Action = action
 }
 
-func (this *SmsParam) GetAccessKeyId() string {
-	return this.AccessKeyId
+// GetAction 获取API请求方法参数
+func (p *Param) GetAction() string {
+	return p.Action
 }
 
-func (this *SmsParam) SetSignatureMethod(signaturemethod string) {
-	this.SignatureMethod = signaturemethod
+// SetVersion 设置API版本
+func (p *Param) SetVersion(version string) {
+	p.Version = version
 }
 
-func (this *SmsParam) GetSignatureMethod() string {
-	return this.SignatureMethod
+// GetVersion 获取API版本
+func (p *Param) GetVersion() string {
+	return p.Version
 }
 
-func (this *SmsParam) SetTimestamp(timestamp string) {
-	this.Timestamp = timestamp
+// SetRegionID 设置API的RegionID
+func (p *Param) SetRegionID(regioniD string) {
+	p.RegionID = regioniD
 }
 
-func (this *SmsParam) GetTimestamp() string {
-	return this.Timestamp
+// GetRegionID 获取API的RegionID
+func (p *Param) GetRegionID() string {
+	return p.RegionID
 }
 
-func (this *SmsParam) SetSignatureVersion(signatureversion string) {
-	this.SignatureVersion = signatureversion
+// SetRecNum 设置短信接收的手机号
+func (p *Param) SetRecNum(RecNum string) {
+	p.RecNum = RecNum
 }
 
-func (this *SmsParam) GetSignatureVersion() string {
-	return this.SignatureVersion
+// GetRecNum 获取短信接收的手机号
+func (p *Param) GetRecNum() string {
+	return p.RecNum
 }
 
-func (this *SmsParam) SetSignatureNonce(signaturenonce string) {
-	this.SignatureNonce = signaturenonce
+// SetSignName 设置签名参数
+func (p *Param) SetSignName(signname string) {
+	p.SignName = signname
 }
 
-func (this *SmsParam) GetSignatureNonce() string {
-	return this.SignatureNonce
+// GetSignName 获取签名参数
+func (p *Param) GetSignName() string {
+	return p.SignName
 }
 
-func (this *SmsParam) SetRegionId(regionid string) {
-	this.RegionId = regionid
+// SetTemplateCode 设置短信模板
+func (p *Param) SetTemplateCode(templatecode string) {
+	p.TemplateCode = templatecode
 }
 
-func (this *SmsParam) GetRegionId() string {
-	return this.RegionId
+// GetTemplateCode 获取短信模板
+func (p *Param) GetTemplateCode() string {
+	return p.TemplateCode
 }
 
-// 短信服务器返回的错误信息
+// SetParamString 设置短信模板参数
+func (p *Param) SetParamString(ParamString string) {
+	p.ParamString = ParamString
+}
+
+// GetParamString 获取短信模板参数
+func (p *Param) GetParamString() string {
+	return p.ParamString
+}
+
+// SetOutID 设置外部流水扩展字段
+func (p *Param) SetOutID(outid string) {
+	p.OutID = outid
+}
+
+// GetOutID 获取外部流水扩展字段
+func (p *Param) GetOutID() string {
+	return p.OutID
+}
+
+// ErrorMessage 短信服务器返回的错误信息
 type ErrorMessage struct {
-	HttpCode  int     `json"-"`
+	HTTPCode  int     `json"-"`
 	Model     *string `json:"Model,omitempty"`
-	RequestId *string `json:"RequestId,omitempty"`
+	RequestID *string `json:"RequestID,omitempty"`
 	Message   *string `json:"Message,omitempty"`
 	Code      *string `json:"Code,omitempty"`
 }
 
-func (e *ErrorMessage) GetHttpCode() int {
-	return e.HttpCode
+// GetHTTPCode 获取HTTP请求的错误码
+func (e *ErrorMessage) GetHTTPCode() int {
+	return e.HTTPCode
 }
 
-func (e *ErrorMessage) SetHttpCode(code int) {
-	e.HttpCode = code
+// SetHTTPCode 设置HTTP错误码
+func (e *ErrorMessage) SetHTTPCode(code int) {
+	e.HTTPCode = code
 }
 
+// GetModel get model
 func (e *ErrorMessage) GetModel() string {
 	if e != nil && e.Model != nil {
 		return *e.Model
@@ -166,13 +221,15 @@ func (e *ErrorMessage) GetModel() string {
 	return ""
 }
 
-func (e *ErrorMessage) GetRequestId() string {
-	if e != nil && e.RequestId != nil {
-		return *e.RequestId
+// GetRequestID 获取请求的ID序列
+func (e *ErrorMessage) GetRequestID() string {
+	if e != nil && e.RequestID != nil {
+		return *e.RequestID
 	}
 	return ""
 }
 
+// GetMessage 获取错误信息
 func (e *ErrorMessage) GetMessage() string {
 	if e != nil && e.Message != nil {
 		return *e.Message
@@ -180,6 +237,7 @@ func (e *ErrorMessage) GetMessage() string {
 	return ""
 }
 
+// GetCode 获取请求的错误码
 func (e *ErrorMessage) GetCode() string {
 	if e != nil && e.Code != nil {
 		return *e.Code
@@ -187,6 +245,7 @@ func (e *ErrorMessage) GetCode() string {
 	return ""
 }
 
+// Error 序列化成字符串
 func (e *ErrorMessage) Error() string {
 	body, err := json.Marshal(e)
 	if err != nil {
@@ -195,111 +254,92 @@ func (e *ErrorMessage) Error() string {
 	return string(body)
 }
 
-type SMSClient struct {
+// Client HTTP请求配置信息
+type Client struct {
 	// SMS服务的地址，默认为（https://sms.aliyuncs.com）
 	EndPoint string
 	// 访问SMS服务的accessid，通过官方网站申请或通过管理员获取
-	AccessId string
+	AccessID string
 	// 访问SMS服务的accesskey，通过官方网站申请或通过管理员获取
 	AccessKey string
-	// 连接池中每个连接的Socket超时，单位为秒，可以为int或float。默认值为50
+	// 连接池中每个连接的Socket超时，单位为秒，可以为int或float。默认值为30
 	SocketTimeout int
 
 	// 其他参数
-	Param SmsParam
+	Param Param
 	param map[string]string
 }
 
-// 设置短信服务器
-func (c *SMSClient) SetEndPoint(end_point string) {
-	c.EndPoint = end_point
+// SetEndPoint 设置短信服务器
+func (c *Client) SetEndPoint(endPoint string) {
+	c.EndPoint = endPoint
 }
 
-// 设置短信服务的accessid，通过官方网站申请或通过管理员获取
-func (c *SMSClient) SetAccessId(accessid string) {
-	c.AccessId = accessid
+// SetAccessID 设置短信服务的accessid，通过官方网站申请或通过管理员获取
+func (c *Client) SetAccessID(accessid string) {
+	c.AccessID = accessid
 }
 
-// 设置短信服务的accesskey，通过官方网站申请或通过管理员获取
-func (c *SMSClient) SetAccessKey(accesskey string) {
+// SetAccessKey 设置短信服务的accesskey，通过官方网站申请或通过管理员获取
+func (c *Client) SetAccessKey(accesskey string) {
 	c.AccessKey = accesskey
 }
 
-// 设置短信服务的Socket超时，单位为秒，可以为int或float。默认值为50
-func (c *SMSClient) SetSocketTimeout(sockettimeout int) {
+// SetSocketTimeout 设置短信服务的Socket超时，单位为秒，可以为int或float。默认值为30
+func (c *Client) SetSocketTimeout(sockettimeout int) {
 	if sockettimeout == 0 {
-		sockettimeout = 50
+		sockettimeout = 30
 	}
 	c.SocketTimeout = sockettimeout
 }
 
-// 发送给多个手机号, 最多100个
-func (c *SMSClient) SendMulti(recnum []string, signname, templatecode, paramstring string) (e *ErrorMessage, err error) {
-	var body []byte
+func (c *Client) calcStringToSign() string {
+	c.param = make(map[string]string)
+	c.param["SignatureMethod"] = c.Param.GetSignatureMethod()
+	c.param["SignatureNonce"] = uuid.New()
+	// sync c.Param.SignatureNonce
+	c.Param.SetSignatureNonce(c.param["SignatureNonce"])
+	c.param["AccessKeyId"] = c.Param.GetAccessKeyID()
+	c.param["SignatureVersion"] = c.Param.GetSignatureVersion()
+	c.param["Timestamp"] = time.Now().UTC().Format(time.RFC3339)
+	// sync c.Param.Timestamp
+	c.Param.SetTimestamp(c.param["Timestamp"])
+	c.param["Format"] = c.Param.GetFormat()
 
-	e = &ErrorMessage{}
-	if len(recnum) > 100 {
-		return nil, errors.New("number of recnum should be less than 100")
-	}
-	c.Param.SetSignName(signname)
-	c.Param.SetTemplateCode(templatecode)
-	c.Param.SetParamString(paramstring)
-	c.Param.SetRecNum(strings.Join(recnum, ","))
-	signature := signature_method(c.AccessKey, c.calc_string_to_sign())
+	c.param["Action"] = c.Param.GetAction()
+	c.param["Version"] = c.Param.GetVersion()
+	c.param["RegionId"] = c.Param.GetRegionID()
+	c.param["RecNum"] = c.Param.GetRecNum()
+	c.param["SignName"] = c.Param.GetSignName()
+	c.param["ParamString"] = c.Param.GetParamString()
+	c.param["TemplateCode"] = c.Param.GetTemplateCode()
 
-	req := urllib.Post(c.EndPoint)
+	strslice := make([]string, len(c.param))
+	i := 0
 	for k, v := range c.param {
-		req.Param(k, v)
+		data := url.Values{}
+		data.Add(k, v)
+		strslice[i] = data.Encode()
+		strslice[i] = percentEncodeBefore(strslice[i])
+		i++
 	}
-	req.Param("Signature", signature)
-	resp, err := req.Response()
-	if err != nil {
-		return nil, err
-	}
-	if resp.Body == nil {
-		return nil, nil
-	}
-	defer resp.Body.Close()
-	if resp.Header.Get("Content-Encoding") == "gzip" {
-		reader, err := gzip.NewReader(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-		body, err = ioutil.ReadAll(reader)
-	} else {
-		body, err = ioutil.ReadAll(resp.Body)
-	}
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(body, e)
-	e.SetHttpCode(resp.StatusCode)
-	if HttpDebugEnable {
-		fmt.Println("C-->S:", req.DumpRequestString())
-		fmt.Println("S-->C:", e.Error())
-	}
-	if err != nil {
-		return e, err
-	}
-	if e.GetCode() != "" {
-		return e, errors.New(e.GetCode())
-	}
-	return e, nil
+	sort.Strings(strslice)
+	return "POST&" + percentEncode("/") + "&" + percentEncode(strings.Join(strslice, "&"))
 }
 
-// 发送给一个手机号
-func (c *SMSClient) SendOne(recnum, signname, templatecode, paramstring string) (e *ErrorMessage, err error) {
+// SendOne 发送给一个手机号
+func (c *Client) SendOne(RecNum, signname, templatecode, ParamString string) (e *ErrorMessage, err error) {
 	var body []byte
 
 	e = &ErrorMessage{}
 	c.Param.SetSignName(signname)
 	c.Param.SetTemplateCode(templatecode)
-	c.Param.SetParamString(paramstring)
-	c.Param.SetRecNum(recnum)
-	signature := signature_method(c.AccessKey, c.calc_string_to_sign())
+	c.Param.SetParamString(ParamString)
+	c.Param.SetRecNum(RecNum)
+	signature := signatureMethod(c.AccessKey, c.calcStringToSign())
 
 	req := urllib.Post(c.EndPoint)
-	if HttpDebugEnable {
+	if HTTPDebugEnable {
 		req.Debug(true)
 	}
 	for k, v := range c.param {
@@ -327,8 +367,8 @@ func (c *SMSClient) SendOne(recnum, signname, templatecode, paramstring string) 
 		return nil, err
 	}
 	err = json.Unmarshal(body, e)
-	e.SetHttpCode(resp.StatusCode)
-	if HttpDebugEnable {
+	e.SetHTTPCode(resp.StatusCode)
+	if HTTPDebugEnable {
 		fmt.Println("C-->S:", req.DumpRequestString())
 		fmt.Println("S-->C:", e.Error())
 	}
@@ -341,113 +381,115 @@ func (c *SMSClient) SendOne(recnum, signname, templatecode, paramstring string) 
 	return e, nil
 }
 
-func (c *SMSClient) calc_string_to_sign() string {
-	c.param = make(map[string]string)
-	c.param["Action"] = c.Param.GetAction()
-	c.param["SignName"] = c.Param.GetSignName()
-	c.param["TemplateCode"] = c.Param.GetTemplateCode()
-	c.param["RecNum"] = c.Param.GetRecNum()
-	c.param["ParamString"] = c.Param.GetParamString()
-	c.param["Format"] = c.Param.GetFormat()
-	c.param["Version"] = c.Param.GetVersion()
-	c.param["AccessKeyId"] = c.Param.GetAccessKeyId()
-	c.param["SignatureMethod"] = c.Param.GetSignatureMethod()
-	c.param["Timestamp"] = time.Now().UTC().Format(time.RFC3339)
-	// sync c.Param.Timestamp
-	c.Param.SetTimestamp(c.param["Timestamp"])
-	c.param["SignatureVersion"] = c.Param.GetSignatureVersion()
-	c.param["SignatureNonce"] = uuid.New()
-	// sync c.Param.SignatureNonce
-	c.Param.SetSignatureNonce(c.param["SignatureNonce"])
-	c.param["RegionId"] = c.Param.GetRegionId()
+// SendMulti 发送给多个手机号, 最多100个
+func (c *Client) SendMulti(RecNum []string, signname, templatecode, ParamString string) (e *ErrorMessage, err error) {
+	var body []byte
 
-	strslice := make([]string, len(c.param))
-	i := 0
-	for k, v := range c.param {
-		data := url.Values{}
-		data.Add(k, v)
-		strslice[i] = data.Encode()
-		strslice[i] = aliyun_sms_encode_over(strslice[i])
-		i++
+	e = &ErrorMessage{}
+	if len(RecNum) > 100 {
+		return nil, errors.New("number of RecNum should be less than 100")
 	}
-	sort.Strings(strslice)
-	return "POST&" + percent_encode("/") + "&" + percent_encode(strings.Join(strslice, "&"))
+	c.Param.SetSignName(signname)
+	c.Param.SetTemplateCode(templatecode)
+	c.Param.SetParamString(ParamString)
+	c.Param.SetRecNum(strings.Join(RecNum, ","))
+	signature := signatureMethod(c.AccessKey, c.calcStringToSign())
+
+	req := urllib.Post(c.EndPoint)
+	for k, v := range c.param {
+		req.Param(k, v)
+	}
+	req.Param("Signature", signature)
+	resp, err := req.Response()
+	if err != nil {
+		return nil, err
+	}
+	if resp.Body == nil {
+		return nil, nil
+	}
+	defer resp.Body.Close()
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		reader, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		body, err = ioutil.ReadAll(reader)
+	} else {
+		body, err = ioutil.ReadAll(resp.Body)
+	}
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(body, e)
+	e.SetHTTPCode(resp.StatusCode)
+	if HTTPDebugEnable {
+		fmt.Println("C-->S:", req.DumpRequestString())
+		fmt.Println("S-->C:", e.Error())
+	}
+	if err != nil {
+		return e, err
+	}
+	if e.GetCode() != "" {
+		return e, errors.New(e.GetCode())
+	}
+	return e, nil
 }
 
-func signature_method(key, string_to_sign string) string {
-	// The signature method is supposed to be HmacSHA1
-	// A switch case is required if there is other methods available
-	mac := hmac.New(sha1.New, []byte(key+"&"))
-	mac.Write([]byte(string_to_sign))
-	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
-}
-
-// 一般支持 URL 编码的库（比如 Java 中的 java.net.URLEncoder）都是按照“application/x-www-form-urlencoded”的MIME类型的规则进行编码的。
-// 实现时可以直接使用这类方式进行编码，
-// 把编码后的字符串中加号（+）替换成%20、星号（*）替换成%2A、%7E 替换回波浪号（~）, 即可得到所需要的编码字符串
-func percent_encode(s string) string {
-	s = url.QueryEscape(s)
-	s = strings.Replace(s, "+", "%20", -1)
-	s = strings.Replace(s, "*", "%2A", -1)
-	s = strings.Replace(s, "%7E", "~", -1)
-
-	return s
-}
-
-// 把编码后的字符串中加号（+）替换成%20、星号（*）替换成%2A、%7E 替换回波浪号（~）, 即可得到所需要的编码字符串
-func aliyun_sms_encode_over(s string) string {
-	s = strings.Replace(s, "+", "%20", -1)
-	s = strings.Replace(s, "*", "%2A", -1)
-	s = strings.Replace(s, "%7E", "~", -1)
-
-	return s
-}
-
-// 创建一个短信发送客户端
-func New(accessid, accesskey string) (c *SMSClient) {
-	c = new(SMSClient)
+// New 创建一个短信发送客户端
+func New(accessid, accesskey string) (c *Client) {
+	c = new(Client)
 	if c.EndPoint == "" {
 		c.EndPoint = "https://sms.aliyuncs.com/"
 	}
-	c.AccessId = accessid
+	c.AccessID = accessid
 	c.AccessKey = accesskey
-	c.Param.SetAction("SingleSendSms")
-	c.Param.SetSignName("your_signname")
-	c.Param.SetTemplateCode("your_templatecode")
-	c.Param.SetRecNum("your_recnum")
-	c.Param.SetParamString("your_paramstring")
-	c.Param.SetFormat("JSON")
-	c.Param.SetVersion("2016-09-27")
-	c.Param.SetAccessKeyId(accessid)
 	c.Param.SetSignatureMethod("HMAC-SHA1")
-	c.Param.SetTimestamp(time.Now().UTC().Format(time.RFC3339))
-	c.Param.SetSignatureVersion("1.0")
 	c.Param.SetSignatureNonce(uuid.New())
-	c.Param.SetRegionId("cn-hangzhou")
+	c.Param.SetAccessKeyID(accessid)
+	c.Param.SetSignatureVersion("1.0")
+	c.Param.SetTimestamp(time.Now().UTC().Format(time.RFC3339))
+	c.Param.SetFormat("JSON")
 
-	// set default setting for urllib
-	url_setting := urllib.HttpSettings{
-		false,            // ShowDebug
-		"GiterLab",       // UserAgent
-		50 * time.Second, // ConnectTimeout
-		50 * time.Second, // ReadWriteTimeout
-		nil,              // TlsClientConfig
-		nil,              // Proxy
-		nil,              // Transport
-		false,            // EnableCookie
-		true,             // Gzip
-		true,             // DumpBody
+	c.Param.SetAction("SingleSendSms")
+	c.Param.SetVersion("2016-09-27")
+	c.Param.SetRegionID("cn-hangzhou")
+	c.Param.SetRecNum("your_RecNum")
+	c.Param.SetSignName("your_signname")
+	c.Param.SetParamString("your_ParamString")
+	c.Param.SetTemplateCode("your_templatecode")
+
+	if urllib.GetDefaultSetting().Transport == nil {
+		// set default setting for urllib
+		trans := &http.Transport{
+			MaxIdleConnsPerHost: 500,
+			Dial: (&net.Dialer{
+				Timeout: time.Duration(15) * time.Second,
+			}).Dial,
+		}
+
+		urlSetting := urllib.HttpSettings{
+			ShowDebug:        false,            // ShowDebug
+			UserAgent:        "GiterLab",       // UserAgent
+			ConnectTimeout:   15 * time.Second, // ConnectTimeout
+			ReadWriteTimeout: 30 * time.Second, // ReadWriteTimeout
+			TlsClientConfig:  nil,              // TlsClientConfig
+			Proxy:            nil,              // Proxy
+			Transport:        trans,            // Transport
+			EnableCookie:     false,            // EnableCookie
+			Gzip:             true,             // Gzip
+			DumpBody:         true,             // DumpBody
+		}
+		if c.SocketTimeout != 0 {
+			urlSetting.ConnectTimeout = time.Duration(c.SocketTimeout) * time.Second
+			urlSetting.ReadWriteTimeout = time.Duration(c.SocketTimeout) * time.Second
+		}
+		if HTTPDebugEnable {
+			urlSetting.ShowDebug = true
+		} else {
+			urlSetting.ShowDebug = false
+		}
+		urllib.SetDefaultSetting(urlSetting)
 	}
-	if c.SocketTimeout != 0 {
-		url_setting.ConnectTimeout = time.Duration(c.SocketTimeout) * time.Second
-		url_setting.ReadWriteTimeout = time.Duration(c.SocketTimeout) * time.Second
-	}
-	if HttpDebugEnable {
-		url_setting.ShowDebug = true
-	} else {
-		url_setting.ShowDebug = false
-	}
-	urllib.SetDefaultSetting(url_setting)
 
 	return c
 }
