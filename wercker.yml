@@ -36,10 +36,12 @@ build:
     - script:
         name: go build
         code: |
-          go build ./...
+          go build example/sample.go
+          go build example/sample-dysms.go          
 
     # Test the project
     - script:
         name: go test
         code: |
-          go test ./...
+          go test ./sms
+          go test ./dysms
