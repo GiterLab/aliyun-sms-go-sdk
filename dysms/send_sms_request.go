@@ -189,9 +189,9 @@ func SendSms(businessID, phoneNumbers, signName, templateCode, templateParam str
 	r.SetOutID(businessID)          // 设置业务请求流水号，必填
 	r.SetSignName(signName)         // 短信签名
 	r.SetPhoneNumbers(phoneNumbers) // 短信发送的号码列表，必填。
-	r.SetTemplateCode(templateCode)
+	r.SetTemplateCode(templateCode) // 短信模板
 	if templateParam != "" {
-		r.SetTemplateParam(templateParam)
+		r.SetTemplateParam(templateParam) // 短信模板参数
 	}
 	return r
 }
