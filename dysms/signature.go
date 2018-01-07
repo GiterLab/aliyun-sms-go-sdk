@@ -1,5 +1,5 @@
-// Package sms Copyright 2016 The GiterLab Authors. All rights reserved.
-package sms
+// Package dysms Copyright 2016 The GiterLab Authors. All rights reserved.
+package dysms
 
 import (
 	"crypto/hmac"

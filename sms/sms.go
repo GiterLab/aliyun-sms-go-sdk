@@ -1,5 +1,4 @@
-// Copyright 2016 The GiterLab Authors. All rights reserved.
-
+// Package sms Copyright 2016 The GiterLab Authors. All rights reserved.
 package sms
 
 import (
@@ -198,7 +197,7 @@ func (p *Param) GetOutID() string {
 type ErrorMessage struct {
 	HTTPCode  int     `json"-"`
 	Model     *string `json:"Model,omitempty"`
-	RequestID *string `json:"RequestID,omitempty"`
+	RequestID *string `json:"RequestId,omitempty"`
 	Message   *string `json:"Message,omitempty"`
 	Code      *string `json:"Code,omitempty"`
 }
@@ -355,9 +354,9 @@ func (c *Client) SendOne(RecNum, signname, templatecode, ParamString string) (e 
 	}
 	defer resp.Body.Close()
 	if resp.Header.Get("Content-Encoding") == "gzip" {
-		reader, err := gzip.NewReader(resp.Body)
-		if err != nil {
-			return nil, err
+		reader, errGzip := gzip.NewReader(resp.Body)
+		if errGzip != nil {
+			return nil, errGzip
 		}
 		body, err = ioutil.ReadAll(reader)
 	} else {
@@ -409,9 +408,9 @@ func (c *Client) SendMulti(RecNum []string, signname, templatecode, ParamString 
 	}
 	defer resp.Body.Close()
 	if resp.Header.Get("Content-Encoding") == "gzip" {
-		reader, err := gzip.NewReader(resp.Body)
-		if err != nil {
-			return nil, err
+		reader, errGzip := gzip.NewReader(resp.Body)
+		if errGzip != nil {
+			return nil, errGzip
 		}
 		body, err = ioutil.ReadAll(reader)
 	} else {
