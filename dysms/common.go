@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"net/url"
 	"sort"
 	"strings"
@@ -207,13 +209,43 @@ func SetACLClient(accessid, accesskey string) *Client {
 	acsClient.SetAccessID(accessid)
 	acsClient.SetAccessKey(accesskey)
 
+	if urllib.GetDefaultSetting().Transport == nil {
+		// set default setting for urllib
+		trans := &http.Transport{
+			MaxIdleConnsPerHost: 500,
+			Dial: (&net.Dialer{
+				Timeout: time.Duration(15) * time.Second,
+			}).Dial,
+		}
+
+		urlSetting := urllib.HttpSettings{
+			ShowDebug:        false,            // ShowDebug
+			UserAgent:        "GiterLab",       // UserAgent
+			ConnectTimeout:   15 * time.Second, // ConnectTimeout
+			ReadWriteTimeout: 30 * time.Second, // ReadWriteTimeout
+			TlsClientConfig:  nil,              // TlsClientConfig
+			Proxy:            nil,              // Proxy
+			Transport:        trans,            // Transport
+			EnableCookie:     false,            // EnableCookie
+			Gzip:             true,             // Gzip
+			DumpBody:         true,             // DumpBody
+		}
+		if acsClient.SocketTimeout != 0 {
+			urlSetting.ConnectTimeout = time.Duration(acsClient.SocketTimeout) * time.Second
+			urlSetting.ReadWriteTimeout = time.Duration(acsClient.SocketTimeout) * time.Second
+		}
+		if HTTPDebugEnable {
+			urlSetting.ShowDebug = true
+		} else {
+			urlSetting.ShowDebug = false
+		}
+		urllib.SetDefaultSetting(urlSetting)
+	}
+
 	return &acsClient
 }
 
-// New 兼容sms SDK
+// New 兼容 sms SDK
 func New(accessid, accesskey string) *Client {
-	acsClient.SetAccessID(accessid)
-	acsClient.SetAccessKey(accesskey)
-
-	return &acsClient
+	return SetACLClient(accessid, accesskey)
 }
