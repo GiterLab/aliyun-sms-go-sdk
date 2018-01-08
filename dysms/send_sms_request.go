@@ -9,7 +9,7 @@ import (
 // SendSmsResponse 发送短信接口服务器响应
 type SendSmsResponse struct {
 	ErrorMessage
-	BizID *string `json:"BizId,omitempty"`
+	BizID *string `json:"BizId,omitempty"` // 发送回执ID,可根据该ID查询具体的发送状态
 }
 
 // GetBizID 发送回执ID,可根据该ID查询具体的发送状态
@@ -171,7 +171,7 @@ func (s *SendSmsRequest) DoActionWithException() (resp *SendSmsResponse, err err
 		if err != nil {
 			return resp, err
 		}
-		if resp.GetCode() != "" {
+		if httpCode != 200 {
 			return resp, errors.New(resp.GetCode())
 		}
 		return resp, nil
@@ -180,6 +180,11 @@ func (s *SendSmsRequest) DoActionWithException() (resp *SendSmsResponse, err err
 }
 
 // SendSms 发送短信接口
+// businessID 设置业务请求流水号，必填。
+// phoneNumbers 短信发送的号码列表，必填。 多手机号使用,分割
+// signName 短信签名
+// templateCode 申请的短信模板编码,必填
+// templateParam 短信模板变量参数
 func SendSms(businessID, phoneNumbers, signName, templateCode, templateParam string) *SendSmsRequest {
 	req := newRequset()
 	req.Put("Version", "2017-05-25")

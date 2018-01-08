@@ -195,7 +195,7 @@ func (p *Param) GetOutID() string {
 
 // ErrorMessage 短信服务器返回的错误信息
 type ErrorMessage struct {
-	HTTPCode  int     `json"-"`
+	HTTPCode  int     `json:"-"`
 	Model     *string `json:"Model,omitempty"`
 	RequestID *string `json:"RequestId,omitempty"`
 	Message   *string `json:"Message,omitempty"`

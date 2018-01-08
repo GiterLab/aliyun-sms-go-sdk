@@ -7,7 +7,7 @@ import (
 
 // ErrorMessage 短信服务器返回的错误信息
 type ErrorMessage struct {
-	HTTPCode  int     `json"-"`
+	HTTPCode  int     `json:"-"`
 	RequestID *string `json:"RequestId,omitempty"`
 	Code      *string `json:"Code,omitempty"`
 	Message   *string `json:"Message,omitempty"`
